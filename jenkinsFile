@@ -1,0 +1,41 @@
+node {
+      stage ('Git checkout'){
+          git branch: 'main', url: 'https://github.com/Gaj-raj/k8s-server-project-cicd.git'
+      }
+      
+      stage ('sending docker file to Ansible server over ssh agent') {
+          sshagent(['ansible_demo']) {
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199'
+            sh 'scp /var/lib/jenkins/workspace/k8s-pipelin/* ubuntu@172.31.89.199:/home/ubuntu/'
+           }
+      }
+      
+      stage ('Docker images building '){
+          sshagent(['ansible_demo']){
+              sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 cd /home/ubuntu/'
+              sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+          }
+      }
+      
+      
+      stage ('Docker images to tagging '){
+           sshagent(['ansible_demo']) {
+    
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 cd /home/ubuntu/'
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 docker image tag $JOB_NAME:v1.$BUILD_ID mechtech/$JOB_NAME:v1.$BUILD_ID '
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 docker image tag $JOB_NAME:v1.$BUILD_ID mechtech/$JOB_NAME:latest '
+             }
+         }
+      
+      
+      stage ('push doxker images to docker hub '){
+          
+          sshagent(['ansible_demo']) {
+             withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable:'dockerHubpassword',usernameVariable:'dockerHubUser')]) {
+             sh " docker login -u ${env.dockerHubUser} -p ${env.dockerHubpassword} "
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 docker image push mechtech/$JOB_NAME:v1.$BUILD_ID '
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.199 docker image push mechtech/$JOB_NAME:latest '
+             }
+         }
+    }
+}
