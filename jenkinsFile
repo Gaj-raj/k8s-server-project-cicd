@@ -28,7 +28,7 @@ node {
          }
       
       
-      stage ('push doxker images to docker hub '){
+      stage ('push docker images to docker hub '){
           
           sshagent(['ansible_demo']) {
              withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable:'dockerHubpassword',usernameVariable:'dockerHubUser')]) {
@@ -38,4 +38,12 @@ node {
              }
          }
     }
+    
+      stage ('Copy files from ansible to Kubernetes server'){
+          sshagent(['kubernetes-server']) {
+          sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.89.244'
+          sh 'scp /var/lib/jenkins/workspace/k8s-pipelin/* ubuntu@172.31.89.199:/home/ubuntu/'
+           }
+      }
+        
 }
